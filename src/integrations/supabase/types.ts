@@ -14,7 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      pomodoro_sessions: {
+        Row: {
+          completed_at: string
+          created_at: string
+          duration_seconds: number
+          id: string
+          mode_label: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          created_at?: string
+          duration_seconds: number
+          id?: string
+          mode_label: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string
+          duration_seconds?: number
+          id?: string
+          mode_label?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
