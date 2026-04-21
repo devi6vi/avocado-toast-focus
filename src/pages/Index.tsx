@@ -119,7 +119,7 @@ const Index = () => {
     <main className="min-h-screen px-4 py-8 md:py-12">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
-        <header className="mb-10 text-center">
+        <header className="relative mb-10 text-center">
           <div className="absolute right-4 top-4 md:right-8 md:top-8">
             <AuthBar user={user} />
           </div>
