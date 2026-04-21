@@ -19,6 +19,12 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        cream: "hsl(var(--cream))",
+        sunshine: "hsl(var(--sunshine))",
+        carrot: "hsl(var(--crisp-carrot))",
+        tomato: "hsl(var(--tomato))",
+        forest: "hsl(var(--forest))",
+        kiwi: "hsl(var(--kiwi))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
