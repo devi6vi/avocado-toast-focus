@@ -4,8 +4,9 @@ import { Timer, TimerMode } from "@/components/Timer";
 import { ModeSelector } from "@/components/ModeSelector";
 import { TaskList } from "@/components/TaskList";
 import { StatsBar } from "@/components/StatsBar";
+import { SoundSettings } from "@/components/SoundSettings";
 import { usePomodoroStats } from "@/hooks/usePomodoroStats";
-import { playChime, requestNotifyPermission, sendNotification } from "@/lib/chime";
+import { playChime, requestNotifyPermission, sendNotification, ChimeSound } from "@/lib/chime";
 import avocadoMascot from "@/assets/avocado-mascot.png";
 
 const DEFAULT_MODES: TimerMode[] = [
@@ -27,6 +28,10 @@ const Index = () => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("avocado-toast-notify") === "1";
   });
+  const [chime, setChime] = useState<ChimeSound>(() => {
+    if (typeof window === "undefined") return "bell";
+    return (localStorage.getItem("avocado-toast-chime") as ChimeSound) || "bell";
+  });
 
   useEffect(() => {
     localStorage.setItem("avocado-toast-muted", muted ? "1" : "0");
@@ -34,6 +39,9 @@ const Index = () => {
   useEffect(() => {
     localStorage.setItem("avocado-toast-notify", notify ? "1" : "0");
   }, [notify]);
+  useEffect(() => {
+    localStorage.setItem("avocado-toast-chime", chime);
+  }, [chime]);
 
   const handleToggleNotify = async () => {
     if (!notify) {
@@ -55,34 +63,46 @@ const Index = () => {
   };
 
   const handleComplete = () => {
-    if (!muted) playChime();
+    if (!muted) playChime(chime);
     if (notify) sendNotification("Avocado Toast 🥑", `${active.label} done — your toast is ready!`);
-    const isFocus = active.id === "pomo" || active.id === "deep" || active.id === "custom-focus";
+    const isFocus = active.id === "pomo" || active.id === "deep" || active.id.startsWith("custom-focus");
     if (isFocus) recordPomodoro();
     toast(`${active.label} done! Time for a bite 🥑`, {
       description: "Great work — your toast is ready.",
     });
   };
 
-  const handleCustom = (focusMin: number, breakMin: number) => {
+  const handleCustom = (focusMin: number, breakMin: number, focusName: string) => {
+    const focusId = `custom-focus-${Date.now()}`;
+    const breakId = `custom-break-${Date.now()}`;
     const focusMode: TimerMode = {
-      id: "custom-focus",
-      label: "Custom Focus",
+      id: focusId,
+      label: focusName,
       duration: Math.max(1, focusMin) * 60,
       color: "carrot",
       emoji: "✨",
     };
     const breakMode: TimerMode = {
-      id: "custom-break",
-      label: "Custom Break",
+      id: breakId,
+      label: `${focusName} Break`,
       duration: Math.max(1, breakMin) * 60,
       color: "kiwi",
       emoji: "🥒",
     };
-    const next = [...DEFAULT_MODES.filter((m) => !m.id.startsWith("custom")), focusMode, breakMode];
-    setModes(next);
+    setModes((prev) => [...prev, focusMode, breakMode]);
     setActive(focusMode);
-    toast(`Custom timer set: ${focusMin}min focus / ${breakMin}min break 🥑`);
+    toast(`"${focusName}" set: ${focusMin}min focus / ${breakMin}min break 🥑`);
+  };
+
+  const handleDelete = (id: string) => {
+    setModes((prev) => {
+      const next = prev.filter((m) => m.id !== id);
+      if (active.id === id) {
+        setActive(next[0] ?? DEFAULT_MODES[0]);
+      }
+      return next;
+    });
+    toast("Custom timer removed");
   };
 
   return (
@@ -116,6 +136,7 @@ const Index = () => {
             onToggleMute={() => setMuted((m) => !m)}
             notify={notify}
             onToggleNotify={handleToggleNotify}
+            soundPicker={<SoundSettings selected={chime} onSelect={setChime} />}
           />
         </div>
 
@@ -126,6 +147,7 @@ const Index = () => {
             active={active.id}
             onChange={setActive}
             onCustom={handleCustom}
+            onDelete={handleDelete}
           />
         </div>
 

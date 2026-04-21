@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Flame, Volume2, VolumeX, Bell, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +9,7 @@ interface StatsBarProps {
   onToggleMute: () => void;
   notify: boolean;
   onToggleNotify: () => void;
+  soundPicker?: ReactNode;
 }
 
 export const StatsBar = ({
@@ -17,6 +19,7 @@ export const StatsBar = ({
   onToggleMute,
   notify,
   onToggleNotify,
+  soundPicker,
 }: StatsBarProps) => {
   return (
     <div className="flex flex-wrap items-center justify-center gap-3">
@@ -56,6 +59,7 @@ export const StatsBar = ({
       >
         {notify ? <Bell className="h-5 w-5" strokeWidth={2.5} /> : <BellOff className="h-5 w-5" strokeWidth={2.5} />}
       </button>
+      {soundPicker}
     </div>
   );
 };
