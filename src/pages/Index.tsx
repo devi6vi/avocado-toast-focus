@@ -5,7 +5,10 @@ import { ModeSelector } from "@/components/ModeSelector";
 import { TaskList } from "@/components/TaskList";
 import { StatsBar } from "@/components/StatsBar";
 import { SoundSettings } from "@/components/SoundSettings";
-import { usePomodoroStats } from "@/hooks/usePomodoroStats";
+import { AuthBar } from "@/components/AuthBar";
+import { WeeklyChart } from "@/components/WeeklyChart";
+import { useAuth } from "@/hooks/useAuth";
+import { useCloudStats } from "@/hooks/useCloudStats";
 import { playChime, requestNotifyPermission, sendNotification, ChimeSound } from "@/lib/chime";
 import avocadoMascot from "@/assets/avocado-mascot.png";
 
@@ -19,7 +22,8 @@ const DEFAULT_MODES: TimerMode[] = [
 const Index = () => {
   const [modes, setModes] = useState<TimerMode[]>(DEFAULT_MODES);
   const [active, setActive] = useState<TimerMode>(DEFAULT_MODES[0]);
-  const { todayCount, streak, recordPomodoro } = usePomodoroStats();
+  const { user } = useAuth();
+  const { todayCount, streak, weekly, recordPomodoro } = useCloudStats(user);
   const [muted, setMuted] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("avocado-toast-muted") === "1";
@@ -66,7 +70,13 @@ const Index = () => {
     if (!muted) playChime(chime);
     if (notify) sendNotification("Avocado Toast 🥑", `${active.label} done — your toast is ready!`);
     const isFocus = active.id === "pomo" || active.id === "deep" || active.id.startsWith("custom-focus");
-    if (isFocus) recordPomodoro();
+    if (isFocus) {
+      if (user) {
+        recordPomodoro(active.label, active.duration);
+      } else {
+        toast("Sign in to save this 🥑 to the cloud");
+      }
+    }
     toast(`${active.label} done! Time for a bite 🥑`, {
       description: "Great work — your toast is ready.",
     });
@@ -109,7 +119,10 @@ const Index = () => {
     <main className="min-h-screen px-4 py-8 md:py-12">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
-        <header className="mb-10 text-center">
+        <header className="relative mb-10 text-center">
+          <div className="absolute right-4 top-4 md:right-8 md:top-8">
+            <AuthBar user={user} />
+          </div>
           <div className="flex items-center justify-center gap-3 mb-2">
             <img
               src={avocadoMascot}
@@ -160,7 +173,8 @@ const Index = () => {
             />
           </section>
 
-          <aside>
+          <aside className="space-y-6">
+            <WeeklyChart data={weekly} signedIn={!!user} />
             <TaskList />
           </aside>
         </div>
