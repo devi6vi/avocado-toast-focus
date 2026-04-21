@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Timer, TimerMode } from "@/components/Timer";
 import { ModeSelector } from "@/components/ModeSelector";
 import { TaskList } from "@/components/TaskList";
+import { StatsBar } from "@/components/StatsBar";
+import { usePomodoroStats } from "@/hooks/usePomodoroStats";
+import { playChime, requestNotifyPermission, sendNotification } from "@/lib/chime";
 import avocadoMascot from "@/assets/avocado-mascot.png";
 
 const DEFAULT_MODES: TimerMode[] = [
@@ -15,6 +18,51 @@ const DEFAULT_MODES: TimerMode[] = [
 const Index = () => {
   const [modes, setModes] = useState<TimerMode[]>(DEFAULT_MODES);
   const [active, setActive] = useState<TimerMode>(DEFAULT_MODES[0]);
+  const { todayCount, streak, recordPomodoro } = usePomodoroStats();
+  const [muted, setMuted] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("avocado-toast-muted") === "1";
+  });
+  const [notify, setNotify] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("avocado-toast-notify") === "1";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("avocado-toast-muted", muted ? "1" : "0");
+  }, [muted]);
+  useEffect(() => {
+    localStorage.setItem("avocado-toast-notify", notify ? "1" : "0");
+  }, [notify]);
+
+  const handleToggleNotify = async () => {
+    if (!notify) {
+      const result = await requestNotifyPermission();
+      if (result === "granted") {
+        setNotify(true);
+        toast("Notifications on 🔔");
+      } else if (result === "unsupported") {
+        toast("Notifications not supported in this browser");
+      } else {
+        toast("Notification permission denied", {
+          description: "Enable it in your browser settings.",
+        });
+      }
+    } else {
+      setNotify(false);
+      toast("Notifications off");
+    }
+  };
+
+  const handleComplete = () => {
+    if (!muted) playChime();
+    if (notify) sendNotification("Avocado Toast 🥑", `${active.label} done — your toast is ready!`);
+    const isFocus = active.id === "pomo" || active.id === "deep" || active.id === "custom-focus";
+    if (isFocus) recordPomodoro();
+    toast(`${active.label} done! Time for a bite 🥑`, {
+      description: "Great work — your toast is ready.",
+    });
+  };
 
   const handleCustom = (focusMin: number, breakMin: number) => {
     const focusMode: TimerMode = {
@@ -59,6 +107,18 @@ const Index = () => {
           </p>
         </header>
 
+        {/* Stats + audio/notification controls */}
+        <div className="mb-6">
+          <StatsBar
+            todayCount={todayCount}
+            streak={streak}
+            muted={muted}
+            onToggleMute={() => setMuted((m) => !m)}
+            notify={notify}
+            onToggleNotify={handleToggleNotify}
+          />
+        </div>
+
         {/* Mode selector */}
         <div className="mb-8">
           <ModeSelector
@@ -74,11 +134,7 @@ const Index = () => {
           <section className="chunky-card-lg bg-cream p-8 md:p-10 flex justify-center">
             <Timer
               mode={active}
-              onComplete={() =>
-                toast(`${active.label} done! Time for a bite 🥑`, {
-                  description: "Great work — your toast is ready.",
-                })
-              }
+              onComplete={handleComplete}
             />
           </section>
 
