@@ -120,6 +120,9 @@ const Index = () => {
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <header className="mb-10 text-center">
+          <div className="absolute right-4 top-4 md:right-8 md:top-8">
+            <AuthBar user={user} />
+          </div>
           <div className="flex items-center justify-center gap-3 mb-2">
             <img
               src={avocadoMascot}
@@ -170,7 +173,8 @@ const Index = () => {
             />
           </section>
 
-          <aside>
+          <aside className="space-y-6">
+            <WeeklyChart data={weekly} signedIn={!!user} />
             <TaskList />
           </aside>
         </div>
