@@ -1,15 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Timer, TimerMode } from "@/components/Timer";
 import { ModeSelector } from "@/components/ModeSelector";
-import { TaskList } from "@/components/TaskList";
+import { TaskList, TaskListHandle } from "@/components/TaskList";
 import { StatsBar } from "@/components/StatsBar";
-import { SoundSettings } from "@/components/SoundSettings";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import { AuthBar } from "@/components/AuthBar";
 import { WeeklyChart } from "@/components/WeeklyChart";
 import { useAuth } from "@/hooks/useAuth";
 import { useCloudStats } from "@/hooks/useCloudStats";
-import { playChime, requestNotifyPermission, sendNotification, ChimeSound } from "@/lib/chime";
+import { useSettings } from "@/hooks/useSettings";
+import {
+  playChimeRepeat,
+  playFocusSound,
+  stopFocusSound,
+  requestNotifyPermission,
+  sendNotification,
+} from "@/lib/chime";
 import avocadoMascot from "@/assets/avocado-mascot.png";
 
 const DEFAULT_MODES: TimerMode[] = [
@@ -22,36 +29,18 @@ const DEFAULT_MODES: TimerMode[] = [
 const Index = () => {
   const [modes, setModes] = useState<TimerMode[]>(DEFAULT_MODES);
   const [active, setActive] = useState<TimerMode>(DEFAULT_MODES[0]);
+  const [autoStart, setAutoStart] = useState(false);
+  const completedFocusRef = useRef(0); // counts toward long-break interval
+  const taskListRef = useRef<TaskListHandle>(null);
   const { user } = useAuth();
   const { todayCount, streak, weekly, recordPomodoro } = useCloudStats(user);
-  const [muted, setMuted] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("avocado-toast-muted") === "1";
-  });
-  const [notify, setNotify] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("avocado-toast-notify") === "1";
-  });
-  const [chime, setChime] = useState<ChimeSound>(() => {
-    if (typeof window === "undefined") return "bell";
-    return (localStorage.getItem("avocado-toast-chime") as ChimeSound) || "bell";
-  });
-
-  useEffect(() => {
-    localStorage.setItem("avocado-toast-muted", muted ? "1" : "0");
-  }, [muted]);
-  useEffect(() => {
-    localStorage.setItem("avocado-toast-notify", notify ? "1" : "0");
-  }, [notify]);
-  useEffect(() => {
-    localStorage.setItem("avocado-toast-chime", chime);
-  }, [chime]);
+  const { settings, update } = useSettings();
 
   const handleToggleNotify = async () => {
-    if (!notify) {
+    if (!settings.notifyEnabled) {
       const result = await requestNotifyPermission();
       if (result === "granted") {
-        setNotify(true);
+        update("notifyEnabled", true);
         toast("Notifications on 🔔");
       } else if (result === "unsupported") {
         toast("Notifications not supported in this browser");
@@ -61,26 +50,77 @@ const Index = () => {
         });
       }
     } else {
-      setNotify(false);
+      update("notifyEnabled", false);
       toast("Notifications off");
     }
   };
 
+  const isFocusMode = (m: TimerMode) =>
+    m.id === "pomo" || m.id === "deep" || m.id.startsWith("custom-focus");
+  const isBreakMode = (m: TimerMode) =>
+    m.id === "short" || m.id === "long" || m.id.startsWith("custom-break");
+
   const handleComplete = () => {
-    if (!muted) playChime(chime);
-    if (notify) sendNotification("Avocado Toast 🥑", `${active.label} done — your toast is ready!`);
-    const isFocus = active.id === "pomo" || active.id === "deep" || active.id.startsWith("custom-focus");
-    if (isFocus) {
+    playChimeRepeat(settings.alarmSound, settings.alarmRepeat);
+    if (settings.notifyEnabled)
+      sendNotification("Avocado Toast 🥑", `${active.label} done — your toast is ready!`);
+    stopFocusSound();
+
+    const wasFocus = isFocusMode(active);
+    if (wasFocus) {
       if (user) {
         recordPomodoro(active.label, active.duration);
       } else {
         toast("Sign in to save this 🥑 to the cloud");
       }
+      // Auto-check next task
+      if (settings.autoCheckTask) {
+        const checked = taskListRef.current?.checkTopTask();
+        if (checked) toast(`Auto-checked: ${checked} ✅`);
+      }
+      completedFocusRef.current += 1;
     }
+
     toast(`${active.label} done! Time for a bite 🥑`, {
       description: "Great work — your toast is ready.",
     });
+
+    // Auto-flow between focus and break
+    if (wasFocus && settings.autoStartBreaks) {
+      const useLong =
+        completedFocusRef.current > 0 &&
+        completedFocusRef.current % Math.max(1, settings.longBreakInterval) === 0;
+      const nextBreak =
+        modes.find((m) => (useLong ? m.id === "long" : m.id === "short")) ?? null;
+      if (nextBreak) {
+        setAutoStart(true);
+        setActive(nextBreak);
+      }
+    } else if (isBreakMode(active) && settings.autoStartPomodoros) {
+      const nextFocus = modes.find((m) => m.id === "pomo") ?? modes.find(isFocusMode) ?? null;
+      if (nextFocus) {
+        setAutoStart(true);
+        setActive(nextFocus);
+      }
+    }
   };
+
+  // Manual mode change clears autoStart so the user controls Start
+  const handleModeChange = (m: TimerMode) => {
+    setAutoStart(false);
+    setActive(m);
+  };
+
+  // Drive the focus background sound: play during focus mode, stop otherwise
+  useEffect(() => {
+    if (settings.focusSound !== "none" && isFocusMode(active)) {
+      playFocusSound(settings.focusSound, settings.focusVolume);
+    } else {
+      stopFocusSound();
+    }
+    return () => stopFocusSound();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active.id, settings.focusSound, settings.focusVolume]);
 
   const handleCustom = (focusMin: number, breakMin: number, focusName: string) => {
     const focusId = `custom-focus-${Date.now()}`;
@@ -100,7 +140,7 @@ const Index = () => {
       emoji: "🥒",
     };
     setModes((prev) => [...prev, focusMode, breakMode]);
-    setActive(focusMode);
+    handleModeChange(focusMode);
     toast(`"${focusName}" set: ${focusMin}min focus / ${breakMin}min break 🥑`);
   };
 
@@ -108,7 +148,7 @@ const Index = () => {
     setModes((prev) => {
       const next = prev.filter((m) => m.id !== id);
       if (active.id === id) {
-        setActive(next[0] ?? DEFAULT_MODES[0]);
+        handleModeChange(next[0] ?? DEFAULT_MODES[0]);
       }
       return next;
     });
@@ -145,11 +185,7 @@ const Index = () => {
           <StatsBar
             todayCount={todayCount}
             streak={streak}
-            muted={muted}
-            onToggleMute={() => setMuted((m) => !m)}
-            notify={notify}
-            onToggleNotify={handleToggleNotify}
-            soundPicker={<SoundSettings selected={chime} onSelect={setChime} />}
+            settingsButton={<SettingsDialog onToggleNotify={handleToggleNotify} />}
           />
         </div>
 
@@ -158,7 +194,7 @@ const Index = () => {
           <ModeSelector
             modes={modes}
             active={active.id}
-            onChange={setActive}
+            onChange={handleModeChange}
             onCustom={handleCustom}
             onDelete={handleDelete}
           />
@@ -170,12 +206,13 @@ const Index = () => {
             <Timer
               mode={active}
               onComplete={handleComplete}
+              autoStart={autoStart}
             />
           </section>
 
           <aside className="space-y-6">
             <WeeklyChart data={weekly} signedIn={!!user} />
-            <TaskList />
+            <TaskList ref={taskListRef} />
           </aside>
         </div>
 
