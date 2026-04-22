@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { Plus, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,12 @@ export type Task = {
   done: boolean;
 };
 
-export const TaskList = () => {
+export type TaskListHandle = {
+  /** Mark the first not-done task as completed. Returns the task text, or null if none. */
+  checkTopTask: () => string | null;
+};
+
+export const TaskList = forwardRef<TaskListHandle>((_props, ref) => {
   const [tasks, setTasks] = useState<Task[]>([
     { id: "1", text: "Sketch out app ideas", done: false },
     { id: "2", text: "Read 10 pages 📖", done: true },
@@ -28,6 +33,19 @@ export const TaskList = () => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
 
   const remove = (id: string) => setTasks((prev) => prev.filter((t) => t.id !== id));
+
+  useImperativeHandle(ref, () => ({
+    checkTopTask: () => {
+      let checked: string | null = null;
+      setTasks((prev) => {
+        const idx = prev.findIndex((t) => !t.done);
+        if (idx === -1) return prev;
+        checked = prev[idx].text;
+        return prev.map((t, i) => (i === idx ? { ...t, done: true } : t));
+      });
+      return checked;
+    },
+  }));
 
   const completed = tasks.filter((t) => t.done).length;
 
@@ -97,4 +115,5 @@ export const TaskList = () => {
       </ul>
     </div>
   );
-};
+});
+TaskList.displayName = "TaskList";
