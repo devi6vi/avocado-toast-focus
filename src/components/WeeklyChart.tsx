@@ -75,12 +75,12 @@ export const WeeklyChart = ({ data, signedIn, isPremium = false }: WeeklyChartPr
                 Unlock with Pro
               </span>
             </div>
-            <a
-              href="#pricing"
+            <button
+              onClick={() => window.dispatchEvent(new Event("open-pricing"))}
               className="text-xs font-bold text-forest underline underline-offset-2 hover:text-carrot"
             >
               See plans →
-            </a>
+            </button>
           </div>
         )}
       </div>

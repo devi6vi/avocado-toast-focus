@@ -7,7 +7,7 @@ import { StatsBar } from "@/components/StatsBar";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { AuthBar } from "@/components/AuthBar";
 import { WeeklyChart } from "@/components/WeeklyChart";
-import { PricingSection } from "@/components/PricingSection";
+import { PricingButton } from "@/components/PricingSection";
 import { useAuth } from "@/hooks/useAuth";
 import { useCloudStats } from "@/hooks/useCloudStats";
 import { useSettings } from "@/hooks/useSettings";
@@ -161,8 +161,9 @@ const Index = () => {
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <header className="relative mb-10 text-center">
-          <div className="absolute right-4 top-4 md:right-8 md:top-8">
+          <div className="absolute right-4 top-4 md:right-8 md:top-8 flex flex-col items-end gap-2">
             <AuthBar user={user} />
+            <PricingButton />
           </div>
           <div className="flex items-center justify-center gap-3 mb-2">
             <img
@@ -180,9 +181,6 @@ const Index = () => {
             Crunchy focus sessions, smooth breaks. 🥑✨
           </p>
         </header>
-
-        {/* Pricing — sits right under the header / sign-in */}
-        <PricingSection />
 
         {/* Stats + audio/notification controls */}
         <div className="mb-6">
