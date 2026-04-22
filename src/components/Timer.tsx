@@ -14,6 +14,8 @@ export type TimerMode = {
 interface TimerProps {
   mode: TimerMode;
   onComplete?: () => void;
+  /** If true, automatically start when the mode changes. */
+  autoStart?: boolean;
 }
 
 const colorMap = {
@@ -29,15 +31,15 @@ const formatTime = (s: number) => {
   return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 };
 
-export const Timer = ({ mode, onComplete }: TimerProps) => {
+export const Timer = ({ mode, onComplete, autoStart = false }: TimerProps) => {
   const [timeLeft, setTimeLeft] = useState(mode.duration);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     setTimeLeft(mode.duration);
-    setRunning(false);
-  }, [mode]);
+    setRunning(autoStart);
+  }, [mode, autoStart]);
 
   useEffect(() => {
     if (running) {
