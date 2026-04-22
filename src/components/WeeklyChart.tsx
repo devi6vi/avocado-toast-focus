@@ -1,15 +1,18 @@
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts";
+import { Lock } from "lucide-react";
 import type { DayCount } from "@/hooks/useCloudStats";
 
 interface WeeklyChartProps {
   data: DayCount[];
   signedIn: boolean;
+  isPremium?: boolean;
 }
 
-export const WeeklyChart = ({ data, signedIn }: WeeklyChartProps) => {
+export const WeeklyChart = ({ data, signedIn, isPremium = false }: WeeklyChartProps) => {
   const total = data.reduce((s, d) => s + d.count, 0);
   const max = Math.max(...data.map((d) => d.count), 1);
   const todayIdx = data.length - 1;
+  const locked = !isPremium;
 
   return (
     <section className="chunky-card bg-cream p-5 md:p-6">
@@ -17,12 +20,16 @@ export const WeeklyChart = ({ data, signedIn }: WeeklyChartProps) => {
         <div>
           <h2 className="font-display text-xl text-forest leading-none">This week</h2>
           <p className="text-xs font-bold uppercase tracking-widest text-forest/60 mt-1">
-            {signedIn ? `${total} pomodoros · last 7 days` : "Sign in to sync your stats"}
+            {locked
+              ? "Premium · weekly & yearly reports"
+              : signedIn
+                ? `${total} pomodoros · last 7 days`
+                : "Sign in to sync your stats"}
           </p>
         </div>
         <span className="text-2xl">📊</span>
       </div>
-      <div className="h-40">
+      <div className="h-40 relative">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 4, left: -24, bottom: 0 }}>
             <XAxis
@@ -60,6 +67,22 @@ export const WeeklyChart = ({ data, signedIn }: WeeklyChartProps) => {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        {locked && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 backdrop-blur-md bg-cream/40 rounded-lg">
+            <div className="chunky-card bg-sunshine px-3 py-2 flex items-center gap-2">
+              <Lock className="h-4 w-4 text-forest" strokeWidth={2.5} />
+              <span className="text-xs font-bold uppercase tracking-widest text-forest">
+                Unlock with Pro
+              </span>
+            </div>
+            <a
+              href="#pricing"
+              className="text-xs font-bold text-forest underline underline-offset-2 hover:text-carrot"
+            >
+              See plans →
+            </a>
+          </div>
+        )}
       </div>
     </section>
   );
