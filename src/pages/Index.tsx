@@ -7,6 +7,7 @@ import { StatsBar } from "@/components/StatsBar";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { AuthBar } from "@/components/AuthBar";
 import { WeeklyChart } from "@/components/WeeklyChart";
+import { PricingSection } from "@/components/PricingSection";
 import { useAuth } from "@/hooks/useAuth";
 import { useCloudStats } from "@/hooks/useCloudStats";
 import { useSettings } from "@/hooks/useSettings";
@@ -180,6 +181,9 @@ const Index = () => {
           </p>
         </header>
 
+        {/* Pricing — sits right under the header / sign-in */}
+        <PricingSection />
+
         {/* Stats + audio/notification controls */}
         <div className="mb-6">
           <StatsBar
@@ -211,7 +215,7 @@ const Index = () => {
           </section>
 
           <aside className="space-y-6">
-            <WeeklyChart data={weekly} signedIn={!!user} />
+            <WeeklyChart data={weekly} signedIn={!!user} isPremium={false} />
             <TaskList ref={taskListRef} />
           </aside>
         </div>
